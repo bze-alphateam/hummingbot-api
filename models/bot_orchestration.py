@@ -120,7 +120,9 @@ class V2ScriptDeployment(BaseModel):
     """Configuration for deploying a bot with a script"""
     instance_name: str = Field(description="Unique name for the bot instance")
     credentials_profile: str = Field(description="Name of the credentials profile to use")
-    image: str = Field(default="hummingbot/hummingbot:latest", description="Docker image for the Hummingbot instance")
+    image: str = Field(
+        default="ghcr.io/bze-alphateam/hummingbot:bze-latest", description="Docker image for the Hummingbot instance"
+    )
     script: Optional[str] = Field(default=None, description="Script name to run (without .py extension)")
     script_config: Optional[str] = Field(default=None, description="Script configuration file name (without .yml extension)")
     headless: bool = Field(default=False, description="Run in headless mode (no UI)")
@@ -156,7 +158,9 @@ class V2ControllerDeployment(BaseModel):
     max_controller_drawdown_quote: Optional[float] = Field(
         default=None, description="Maximum allowed per-controller drawdown in quote usually USDT"
     )
-    image: str = Field(default="hummingbot/hummingbot:latest", description="Docker image for the Hummingbot instance")
+    image: str = Field(
+        default="ghcr.io/bze-alphateam/hummingbot:bze-latest", description="Docker image for the Hummingbot instance"
+    )
     script_config: Optional[str] = Field(default=None, description="Generated script configuration file name")
     headless: bool = Field(default=False, description="Run in headless mode (no UI)")
 

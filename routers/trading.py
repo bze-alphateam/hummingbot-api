@@ -23,6 +23,7 @@ from models.pagination import paginate_by_cursor
 from services.accounts_service import AccountsService
 from services.trading_history_service import TradingHistoryService
 from services.unified_connector_service import UnifiedConnectorService
+from utils.beezee_guard import refuse_beezee
 
 # Create module-specific logger
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ async def place_trade(
     Raises:
         HTTPException: 400 for invalid parameters, 404 for account/connector not found, 500 for trade execution errors
     """
+    refuse_beezee(trade_request.connector_name)
     try:
         # Convert string names to enum instances
         trade_type_enum = TradeType[trade_request.trade_type]
@@ -106,6 +108,7 @@ async def cancel_order(
     Raises:
         HTTPException: 404 if account/connector not found, 500 for cancellation errors
     """
+    refuse_beezee(connector_name)
     try:
         cancelled_order_id = await accounts_service.cancel_order(
             account_name=account_name, connector_name=connector_name, client_order_id=client_order_id

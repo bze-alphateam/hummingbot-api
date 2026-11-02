@@ -29,6 +29,7 @@ from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderState
 from hummingbot.core.utils.async_utils import safe_ensure_future
 
 from services.perpetual_trading_service import sync_position_mode
+from utils.beezee_guard import is_beezee_connector
 from utils.file_system import fs_util
 from utils.hummingbot_api_config_adapter import HummingbotAPIConfigAdapter
 from utils.security import BackendAPISecurity
@@ -345,6 +346,11 @@ class UnifiedConnectorService:
         Returns:
             Best available connector for market operations
         """
+        # beezee: never an account connector, whose order book tracker would open a websocket per
+        # account. Market data comes from the one shared data connector.
+        if is_beezee_connector(connector_name):
+            return self.get_data_connector(connector_name)
+
         # 1. Try specific account's trading connector
         if account_name:
             trading = self._trading_connectors.get(account_name, {}).get(connector_name)
@@ -713,8 +719,10 @@ class UnifiedConnectorService:
         # Initialize metrics
         self._initialize_metrics(connector, account_name, connector_name, cache_key)
 
-        # Start network tasks
-        await self._start_connector_network(connector)
+        # Start network tasks. Not for beezee: the API only reads its balances over REST; the
+        # polling loops and the user-stream websocket run inside the bot container.
+        if not is_beezee_connector(connector_name):
+            await self._start_connector_network(connector)
 
         # Only update order status for orders loaded from DB (balances, rules, positions
         # were already fetched above — no need to repeat via _update_connector_state)
