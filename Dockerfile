@@ -1,9 +1,10 @@
 # Stage 1: Builder stage
 FROM continuumio/miniconda3 AS builder
 
-# Install build dependencies
+# Install build dependencies (git: hummingbot is pip-installed from our fork;
+# build-essential: its Cython extensions are compiled by setup.py)
 RUN apt-get update && \
-    apt-get install -y python3-dev gcc g++ build-essential && \
+    apt-get install -y git python3-dev gcc g++ build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 # Set working directory
