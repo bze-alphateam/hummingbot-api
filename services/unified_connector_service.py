@@ -346,6 +346,11 @@ class UnifiedConnectorService:
         Returns:
             Best available connector for market operations
         """
+        # beezee: never an account connector, whose order book tracker would open a websocket per
+        # account. Market data comes from the one shared data connector.
+        if is_beezee_connector(connector_name):
+            return self.get_data_connector(connector_name)
+
         # 1. Try specific account's trading connector
         if account_name:
             trading = self._trading_connectors.get(account_name, {}).get(connector_name)

@@ -80,3 +80,18 @@ async def test_other_account_connectors_still_start_their_tasks(service):
 
     assert "trading_rules_polling" in connector.started
     assert "user_stream_listener" in connector.started
+
+
+async def test_market_data_for_beezee_uses_the_shared_data_connector_not_an_account(service):
+    account_connector = await service.get_trading_connector("bot-1", "beezee")
+
+    market_connector = service.get_best_connector_for_market("beezee", "bot-1")
+
+    assert market_connector is not account_connector
+    assert market_connector is service.get_data_connector("beezee")
+
+
+async def test_market_data_for_other_connectors_still_prefers_the_account_connector(service):
+    account_connector = await service.get_trading_connector("bot-1", "binance")
+
+    assert service.get_best_connector_for_market("binance", "bot-1") is account_connector

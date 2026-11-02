@@ -104,11 +104,24 @@ object is the same in every body; `{}` or leaving it out gives mainnet (`rest.ge
 `private_key`, `mnemonic` and `passphrase` are written encrypted to
 `bots/credentials/<bot>/connectors/beezee.yml`; the bot container decrypts them with `CONFIG_PASSWORD`.
 
+### What the API runs for `beezee`
+
+- An account connector is built for balance and portfolio reads only. The API starts none of its network
+  tasks: no polling loops, no user-stream websocket, no `start_network()`. Balances are read over REST each
+  update interval. The bot container has its own live connector and trading rules.
+- Market data (`/connectors/beezee/trading-rules`, prices, order books) never uses an account connector.
+  It comes from one shared, unauthenticated data connector (`trading_required` off, no keys, nothing
+  signed). Its trading rules are loaded on the first request. The shared connector starts its network
+  (`start_network()`, with one public order-book stream for the whole API, not one per account) only when an
+  order book is first requested; from then on it refreshes its trading rules by itself. Until then the rules
+  stay the snapshot from the first request. An API restart rebuilds it.
+
 ### Scripts and controllers
 
 The API mounts its shared `bots/scripts` and `bots/controllers` over the image's own, so the BeeZee scripts
 (`scripts/beezee_*`) and controllers are not visible in a bot until they are copied there. Copy them from the
-bot image you deploy, once per image version:
+bot image you deploy, once per image version (the image keeps them in `/home/hummingbot/scripts` and
+`/home/hummingbot/controllers`):
 
 ```bash
 id=$(docker create ghcr.io/bze-alphateam/hummingbot:<sha8>)
