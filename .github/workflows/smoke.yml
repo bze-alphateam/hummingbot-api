@@ -1,0 +1,107 @@
+name: Smoke
+
+on:
+  push:
+    branches: [bze]
+  pull_request:
+    branches: [bze]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke (image + postgres + emqx)
+    runs-on: ubuntu-latest
+    env:
+      # Test-only values for throwaway service containers; not secrets.
+      API_USER: ci
+      API_PASS: ci-test-only
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hbot
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: hummingbot_api
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hbot -d hummingbot_api"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      emqx:
+        image: emqx:5
+        ports:
+          - 1883:1883
+        options: >-
+          --health-cmd "emqx ctl status"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: docker/setup-buildx-action@v3.12.0
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: hummingbot-api:ci
+          cache-from: type=gha,scope=hummingbot-api-image
+          cache-to: type=gha,scope=hummingbot-api-image,mode=max
+
+      - name: Start the API
+        run: |
+          docker run -d --name api --network host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -e USERNAME="$API_USER" \
+            -e PASSWORD="$API_PASS" \
+            -e CONFIG_PASSWORD=ci-test-only \
+            -e BROKER_HOST=127.0.0.1 \
+            -e DATABASE_URL="postgresql+asyncpg://hbot:ci-test-only@127.0.0.1:5432/hummingbot_api" \
+            hummingbot-api:ci
+
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/ -o /dev/null; then
+              echo "API is up after ${i} tries"; exit 0
+            fi
+            sleep 5
+          done
+          docker logs api | tail -n 100
+          echo "API did not come up"; exit 1
+
+      - name: beezee is listed as a connector
+        run: |
+          curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/ | tee connectors.json
+          python3 -c 'import json,sys; assert "beezee" in json.load(open("connectors.json")), "beezee missing"'
+
+      - name: beezee config map lists network and account_type
+        run: |
+          curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/beezee/config-map | tee config-map.json
+          python3 -c '
+          import json
+          text = open("config-map.json").read()
+          for name in ("network", "account_type"):
+              assert name in text, name + " missing from the beezee config map"
+          '
+
+      - name: Connector import and RIPEMD160 work in the image
+        run: |
+          docker exec api python -c '
+          import hashlib
+          import hummingbot.connector.exchange.beezee.beezee_exchange
+          hashlib.new("ripemd160", b"smoke").hexdigest()
+          print("import and ripemd160 ok")
+          '
+
+      - name: API logs on failure
+        if: failure()
+        run: docker logs api | tail -n 200
