@@ -41,7 +41,12 @@ class BackendAPISecurity(Security):
     @classmethod
     def decrypt_connector_config(cls, file_path: Path):
         connector_name = connector_name_from_file(file_path)
-        cls._secure_configs[connector_name] = cls.load_connector_config_map_from_file(file_path)
+        connector_config = cls.load_connector_config_map_from_file(file_path)
+        cls._secure_configs[connector_name] = connector_config
+        # Connectors that take their whole config map (beezee) read it from the connector settings,
+        # not from the flat api keys, so the loaded map has to become the current one.
+        if getattr(connector_config.hb_config, "receive_connector_configuration", False):
+            update_connector_hb_config(connector_config)
 
     @classmethod
     def load_connector_config_map_from_file(cls, yml_path: Path) -> HummingbotAPIConfigAdapter:

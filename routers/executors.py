@@ -28,6 +28,7 @@ from models.executors import (
 from models.pagination import PaginatedResponse
 from services.executor_service import ExecutorService
 from services.market_data_service import MarketDataService
+from utils.beezee_guard import refuse_beezee
 from utils.trading_pair import InvalidTradingPair, split_trading_pair
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ async def create_executor(
 
     Returns the created executor ID and initial status.
     """
+    refuse_beezee(request.executor_config)
     try:
         result = await executor_service.create_executor(
             executor_config=request.executor_config,
