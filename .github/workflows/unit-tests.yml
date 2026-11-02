@@ -35,12 +35,14 @@ jobs:
           cache-from: type=gha,scope=hummingbot-api-image
           cache-to: type=gha,scope=hummingbot-api-image,mode=max
 
-      # Tests marked `integration` need live services and are left to the smoke workflow.
+      # Tests marked `integration` call a separately running API; they are not run in CI.
       - name: Run test suite
         run: |
+          # Some tests read repo-root files (.env.example, README.md), which the image
+          # does not carry, so run from a read-only mount of the checkout with the
+          # image's Python environment.
           docker run --rm \
-            -v "$PWD/test:/hummingbot-api/test:ro" \
-            -v "$PWD/pyproject.toml:/hummingbot-api/pyproject.toml:ro" \
-            -w /hummingbot-api \
+            -v "$PWD:/src:ro" \
+            -w /src \
             --entrypoint pytest \
             hummingbot-api:ci -m "not integration" -p no:cacheprovider

@@ -20,14 +20,9 @@ dependencies:
   - docker-py
   - pip
   - pip:
-      # Unpinned deliberately: the core changes this API reads (ExecutorInfo's
-      # volume_traded_quote, and the order-executor custom_info fields) are not in a
-      # PyPI release yet, so there is no version to pin to. That makes install order
-      # load-bearing — merge the hummingbot PR and let it ship before an image built
-      # from this file is expected to record volume. utils/core_compatibility.py
-      # refuses to start against a core that is missing them, so a wrong install is a
-      # startup error rather than a deployment that books zeros in silence.
-      - hummingbot
+      # BZE fork: hummingbot is built from our fork (it carries the beezee connector),
+      # pinned to a commit of its bze branch. Bumping the connector = a PR bumping this sha.
+      - hummingbot @ git+https://github.com/bze-alphateam/hummingbot@5773c669c33b414946f4f407e0eb5887d4342db3
       - geckoterminal-py>=0.3.1
       - msgpack>=1.0.5
       - flake8
