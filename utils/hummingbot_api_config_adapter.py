@@ -38,23 +38,22 @@ class HummingbotAPIConfigAdapter(ClientConfigAdapter):
     def decrypt_all_secure_data(self):
         from utils.security import BackendAPISecurity
 
-        # Walk the nested models too: a connector such as beezee keeps its secure fields
-        # (private_key, mnemonic, passphrase) inside the `account_type` model, not at the top level.
-        self._decrypt_secure_fields(self, BackendAPISecurity.secrets_manager)
-
-    @classmethod
-    def _decrypt_secure_fields(cls, config: ClientConfigAdapter, secrets_manager):
-        for traversal_item in list(config.traverse()):
+        secure_config_items = (
+            traversal_item
+            for traversal_item in self.traverse()
+            if traversal_item.client_field_data is not None and traversal_item.client_field_data.is_secure
+        )
+        for traversal_item in secure_config_items:
             value = traversal_item.value
-            if isinstance(value, ClientConfigAdapter):
-                cls._decrypt_secure_fields(value, secrets_manager)
-                continue
-            if traversal_item.client_field_data is None or not traversal_item.client_field_data.is_secure:
-                continue
             if isinstance(value, SecretStr):
                 value = value.get_secret_value()
-            if value == "" or secrets_manager is None:
+            if value == "" or BackendAPISecurity.secrets_manager is None:
                 decrypted_value = value
             else:
-                decrypted_value = secrets_manager.decrypt_secret_value(attr=traversal_item.attr, value=value)
-            setattr(config, traversal_item.attr, decrypted_value)
+                decrypted_value = BackendAPISecurity.secrets_manager.decrypt_secret_value(attr=traversal_item.attr, value=value)
+            *intermediate_items, final_config_element = traversal_item.config_path.split(".")
+            config_model = self
+            if len(intermediate_items) > 0:
+                for attr in intermediate_items:
+                    config_model = config_model.__getattr__(attr)
+            setattr(config_model, final_config_element, decrypted_value)

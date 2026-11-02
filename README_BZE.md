@@ -19,7 +19,7 @@ the API is changed.
 - `.github/workflows/docker_buildx_workflow.yml`: only runs on the upstream repository (it pushes to Docker Hub with upstream secrets).
 - `.github/workflows/lint.yml`, `unit-tests.yml`, `build-image.yml`, `smoke.yml`: our own workflows, one per kind of check. `lint.yml` pins `actions/setup-python` to v5.6.0 because v6.0.0 made the first Lint run fail.
 - `utils/beezee_guard.py`: the API never places, cancels or runs executors for `beezee` (see below), and starts no network tasks for a `beezee` account connector.
-- `utils/hummingbot_api_config_adapter.py`, `utils/security.py`: secure fields nested inside a connector's config (beezee `account_type`) are decrypted too, and a loaded profile becomes the connector's configuration.
+- `utils/security.py`: a loaded profile of a connector that takes its whole config map (beezee) becomes the connector's configuration, as in the Hummingbot client.
 - `models/bot_orchestration.py`: deploy requests default to our bot image.
 - This file.
 
