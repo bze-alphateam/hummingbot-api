@@ -56,9 +56,17 @@ jobs:
           cache-from: type=gha,scope=hummingbot-api-image
           cache-to: type=gha,scope=hummingbot-api-image,mode=max
 
+      # Same layout upstream's compose gets from its ./bots bind mount: the API logs the
+      # master account in at startup and needs its connectors directory to exist.
+      - name: Prepare the bots directory
+        run: |
+          mkdir -p bots/credentials/master_account/connectors \
+            bots/instances bots/conf bots/data bots/archived
+
       - name: Start the API
         run: |
           docker run -d --name api --network host \
+            -v "$PWD/bots:/hummingbot-api/bots" \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -e USERNAME="$API_USER" \
             -e PASSWORD="$API_PASS" \
@@ -81,16 +89,19 @@ jobs:
       - name: beezee is listed as a connector
         run: |
           curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/ | tee connectors.json
-          python3 -c 'import json,sys; assert "beezee" in json.load(open("connectors.json")), "beezee missing"'
+          python3 -c 'import json; assert "beezee" in json.load(open("connectors.json")), "beezee missing"'
 
+      # The route returns an object keyed by config field name.
       - name: beezee config map lists network and account_type
         run: |
-          curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/beezee/config-map | tee config-map.json
+          curl -fsS -u "$API_USER:$API_PASS" http://127.0.0.1:8000/connectors/beezee/config-map -o config-map.json
           python3 -c '
           import json
-          text = open("config-map.json").read()
+          fields = json.load(open("config-map.json"))
+          assert isinstance(fields, dict), "unexpected config map shape"
+          print(sorted(fields))
           for name in ("network", "account_type"):
-              assert name in text, name + " missing from the beezee config map"
+              assert name in fields, name + " missing from the beezee config map"
           '
 
       - name: Connector import and RIPEMD160 work in the image

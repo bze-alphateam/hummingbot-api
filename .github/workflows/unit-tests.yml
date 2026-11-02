@@ -35,7 +35,7 @@ jobs:
           cache-from: type=gha,scope=hummingbot-api-image
           cache-to: type=gha,scope=hummingbot-api-image,mode=max
 
-      # Tests marked `integration` need live services and are left to the smoke workflow.
+      # Tests marked `integration` call a separately running API; they are not run in CI.
       - name: Run test suite
         run: |
           # Some tests read repo-root files (.env.example, README.md), which the image

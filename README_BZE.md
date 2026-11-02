@@ -17,7 +17,7 @@ the API is changed.
 - `environment.yml`: `hummingbot` is installed with pip from our fork, pinned to a commit.
 - `Dockerfile` (builder stage): adds `git`, needed for that install. The compiler packages were already there; they build the Cython extensions.
 - `.github/workflows/docker_buildx_workflow.yml`: only runs on the upstream repository (it pushes to Docker Hub with upstream secrets).
-- `.github/workflows/`: four workflows of our own, one per kind of check: `lint.yml`, `unit-tests.yml`, `build-image.yml`, `smoke.yml`.
+- `.github/workflows/lint.yml`, `unit-tests.yml`, `build-image.yml`, `smoke.yml`: our own workflows, one per kind of check. `lint.yml` pins `actions/setup-python` to v5.6.0 because v6.0.0 made the first Lint run fail.
 - This file.
 
 ## Install method
@@ -57,7 +57,7 @@ Pull requests build the image without pushing it.
 | Workflow | What it checks |
 | --- | --- |
 | Lint | upstream's pre-commit hooks on the changed files |
-| Unit tests | upstream's `test/` suite inside the built image (tests marked `integration` excluded) |
+| Unit tests | upstream's `test/` suite inside the built image (the three tests marked `integration` are excluded: they call a separately running API and are not run in CI) |
 | Build image | the Dockerfile builds; pushes the tags above on `bze` |
 | Smoke | the image runs with `postgres:16` and `emqx:5`; `beezee` is listed, its config map shows `network` and `account_type`, and the connector import plus `ripemd160` work |
 
